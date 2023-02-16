@@ -1,0 +1,152 @@
+#include <math.h>
+#include <Wire.h>
+#define I2C_SLAVE_ADDR 0x04 // 4 in hexadecimal
+
+const int d1 = 34;
+const int d2 = 35;
+const int d3 = 32;
+const int d4 = 33;
+const int d5 = 25;
+const int d6 = 14;
+
+float rpos;
+
+int d1o  = 0;
+int d2o  = 0;
+int d3o  = 0;
+int d4o  = 0;
+int d5o  = 0;
+int d6o  = 0;
+
+int kp = 3000;
+int ki = 1;
+int kd = 1;
+int n = 1;
+float err, numerator,denominator;
+float u;
+int CenterAngle = 95;
+float preverr;
+
+int leftMotor_speed, rightMotor_speed, servoAngle;
+
+
+
+void setup() {
+  // put your setup code here, to run once:
+Wire.begin();
+Serial.begin(9600);
+}
+
+
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+n=n+1;
+d1o = analogRead(d1);
+d2o = analogRead(d2);
+d3o = analogRead(d3);
+d4o = analogRead(d4);
+d5o = analogRead(d5);
+d6o = analogRead(d6);
+
+//Serial.print(d5o);
+//Serial.print(d6o);
+//Serial.println();
+//delay(500);
+
+leftMotor_speed = 0;
+rightMotor_speed = 0;
+servoAngle = 90;
+
+numerator = (37.5 * (d1o - d6o)) + (22.5 * (d2o - d5o)) + (7.5 * (d3o - d4o));
+denominator = d1o + d2o + d3o + d4o + d5o + d6o;
+rpos = numerator/denominator;
+err=0-rpos;
+
+
+
+
+ if ((preverr >=37.4) && (err == 0))
+  {
+    while (err==0)
+    {
+      leftMotor_speed = 120;
+      rightMotor_speed = -120;
+      servoAngle = 80;
+      I2C(leftMotor_speed, rightMotor_speed, servoAngle);
+      delay(5);
+
+
+      d1o = analogRead(d1);
+      d2o = analogRead(d2);
+      d3o = analogRead(d3);
+      d4o = analogRead(d4);
+      d5o = analogRead(d5);
+      d6o = analogRead(d6);
+
+numerator = (37.5 * (d1o - d6o)) + (22.5 * (d2o - d5o)) + (7.5 * (d3o - d4o));
+denominator = d1o + d2o + d3o + d4o + d5o + d6o;
+rpos = numerator/denominator;
+err=0-rpos;
+    }
+ }
+
+
+
+
+
+
+ else if ((preverr <=-37.4) && (err == 0))
+  {
+    while (err==0)
+    {
+      leftMotor_speed = 120;
+      rightMotor_speed = -120;
+      servoAngle = 80;
+      I2C(leftMotor_speed, rightMotor_speed, servoAngle);
+      delay(5);
+
+
+      d1o = analogRead(d1);
+      d2o = analogRead(d2);
+      d3o = analogRead(d3);
+      d4o = analogRead(d4);
+      d5o = analogRead(d5);
+      d6o = analogRead(d6);
+
+numerator = (37.5 * (d1o - d6o)) + (22.5 * (d2o - d5o)) + (7.5 * (d3o - d4o));
+denominator = d1o + d2o + d3o + d4o + d5o + d6o;
+rpos = numerator/denominator;
+err=0-rpos;
+    }
+ }
+
+u=(kp*err);
+servoAngle = CenterAngle + u;
+leftMotor_speed = 180-(0.8*u); 
+rightMotor_speed = 180-(0.8*u); 
+Serial.print(rpos);
+Serial.print("\n");
+I2C(leftMotor_speed, rightMotor_speed, servoAngle);
+delay(50);
+preverr=err;
+
+}
+
+
+
+void I2C(int leftMotor_speed, int rightMotor_speed, int servoAngle)
+{
+  Wire.beginTransmission(I2C_SLAVE_ADDR); // transmit to device #4
+  Wire.write((byte)((leftMotor_speed & 0x0000FF00) >> 8));    // first byte of x, containing bits 16 to 9
+  Wire.write((byte)(leftMotor_speed & 0x000000FF));           // second byte of x, containing the 8 LSB - bits 8 to 1
+  Wire.write((byte)((rightMotor_speed & 0x0000FF00) >> 8));   // first byte of y, containing bits 16 to 9
+  Wire.write((byte)(rightMotor_speed & 0x000000FF));          // second byte of y, containing the 8 LSB - bits 8 to 1
+  Wire.write((byte)((servoAngle & 0x0000FF00) >> 8));    // first byte of x, containing bits 16 to 9
+  Wire.write((byte)(servoAngle & 0x000000FF));
+  Wire.endTransmission();   // stop transmitting
+}
+
+
+
